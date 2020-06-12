@@ -7,7 +7,6 @@ module PgBucketImport
           # secret: Rails.application.credentials.spaces&.dig(:secret),
           # bucket: Rails.application.credentials.spaces&.dig(:bucket),
           # endpoint: Rails.application.credentials.spaces&.dig(:endpoint),
-          # reset_enabled: true,
           # folder: Rails.application.credentials.spaces&.dig(:folder),
           # database: ActiveRecord::Base.connection_config[:database],
           # username: ActiveRecord::Base.connection_config[:username],
