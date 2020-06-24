@@ -18,7 +18,7 @@ module PgBucketImport
     end
 
     def download_latest
-      backups = @client.list_objects({bucket: @bucket})
+      backups = @client.list_objects({bucket: @bucket, prefix: @folder})
       latest = backups.contents.max_by(&:last_modified).key.to_s
       @target = latest.gsub(/#{Regexp.quote(@folder)}\//, "")
 
