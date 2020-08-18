@@ -1,5 +1,6 @@
 require "socket"
 require "aws-sdk-s3"
+require "open3"
 require_relative "configuration"
 
 module PgBucketImport
@@ -21,12 +22,14 @@ module PgBucketImport
       backups = @client.list_objects({bucket: @bucket, prefix: @folder})
       latest = backups.contents.max_by(&:last_modified).key.to_s
       @target = latest.gsub(/#{Regexp.quote(@folder)}\//, "")
-
-      @client.get_object(
-        bucket: @bucket,
-        key: latest,
-        response_target: Rails.root.join("tmp", @target)
-      )
+      tmp_location = Rails.root.join("tmp", @target)
+      unless File.exist?(tmp_location)
+        @client.get_object(
+          bucket: @bucket,
+          key: latest,
+          response_target: tmp_location
+        )
+      end
       puts "✅ Successfully downloaded latest backup from #{@target}"
       true
     rescue Aws::S3::Errors::NoSuchKey
@@ -34,21 +37,37 @@ module PgBucketImport
       false
     end
 
-    # This will also remove the dump file from local drive
     def import_latest
       path = Rails.root.join("tmp", @target)
-      worked = system <<~BASH
-        pg_restore --username=#{@username} --host=#{@host} --port=#{@port} --dbname=#{@database} \
-        --no-owner --clean --verbose --no-acl #{path}
-      BASH
-      if worked
+      Open3.popen2e(
+        "pg_restore",
+        "--username=#{@username}",
+        "--host=#{@host}",
+        "--port=#{@port}",
+        "--dbname=#{@database}",
+        "--no-owner",
+        "--clean",
+        "--verbose",
+        "--no-acl",
+        path.to_s
+      ) do |_, oe, t|
+        oe.each do |line|
+          puts line
+          @ignored_errors ||= line.match?(/errors ignored/)
+        end
+        @success = t.value.success?
+      end
+
+      # pg_restore considers some errors "harmless", yet will still throw a non-0 exit code
+      # we need to account for that.
+      if !@success && !@ignored_errors
+        puts "❌Failure to import last DB backup, keeping the dump file at #{path}" \
+             "Remove manually if necessary"
+      else
         puts "✅ Successfully imported #{@target} into #{@database}"
         puts "Removing the dump file..."
         File.delete(path)
         puts "✅ Removed dump at #{path}"
-      else
-        puts "❌Failure to import last DB backup, keeping the dump file at #{path}" \
-             " Remove manually if necessary"
       end
     end
 
