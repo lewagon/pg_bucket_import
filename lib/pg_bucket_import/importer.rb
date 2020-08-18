@@ -39,7 +39,7 @@ module PgBucketImport
       path = Rails.root.join("tmp", @target)
       worked = system <<~BASH
         pg_restore --username=#{@username} --host=#{@host} --port=#{@port} --dbname=#{@database} \
-        --no-owner --verbose --no-acl #{path}
+        --no-owner --clean --verbose --no-acl #{path}
       BASH
       if worked
         puts "✅ Successfully imported #{@target} into #{@database}"
