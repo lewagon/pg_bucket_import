@@ -39,15 +39,10 @@ module PgBucketImport
       path = Rails.root.join("tmp", @target)
       worked = system <<~BASH
         pg_restore --username=#{@username} --host=#{@host} --port=#{@port} --dbname=#{@database} \
-        --no-owner --clean --verbose --no-acl #{path}
+        --no-owner --verbose --no-acl #{path}
       BASH
       if worked
         puts "✅ Successfully imported #{@target} into #{@database}"
-        if ENV["RUNS_IN_DOCKER"].present?
-          puts "⚠️   To access Docker container DB from host machine, run " \
-               " `dip up -d postgres` followed by" \
-               " `psql 'postgresql://#{@host}:#{@port}/#{@database}?user=#{@username}'`"
-        end
         puts "Removing the dump file..."
         File.delete(path)
         puts "✅ Removed dump at #{path}"
