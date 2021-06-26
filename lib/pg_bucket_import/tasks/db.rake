@@ -25,4 +25,14 @@ namespace :db do
     importer = PgBucketImport::Importer.new
     importer.import_latest if importer.download_latest
   end
+
+  desc "Download the latest dump from an S3 bucket"
+  task download_from_bucket: :environment do
+    if Rails.env.production?
+      puts "Make sure to use pg_bucket_import in development environment only"
+      return
+    end
+
+    PgBucketImport::Importer.new.download_latest
+  end
 end
